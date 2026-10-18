@@ -3,15 +3,13 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
+local Camera = Workspace.CurrentCamera
 
 if setfpscap then
     pcall(function() setfpscap(240) end)
 end
 
 local player = Players.LocalPlayer
-local character = player.Character or player.CharacterAdded:Wait()
-local humanoid = character:WaitForChild("Humanoid")
-local rootPart = character:WaitForChild("HumanoidRootPart")
 
 local settings = {
     espSouls = true,
@@ -19,6 +17,7 @@ local settings = {
     espMobs = true,
     showSpeed = true,
     showTimer = true,
+    showCompass = true,
     skyType = "Sunset",
 }
 
@@ -67,6 +66,54 @@ end
 
 ApplySky(settings.skyType)
 
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "EvadeSettings"
+screenGui.ResetOnSpawn = false
+screenGui.IgnoreGuiInset = true
+screenGui.DisplayOrder = 2147483647
+screenGui.Parent = game:GetService("CoreGui")
+
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Size = UDim2.new(0, 200, 0, 30)
+speedLabel.Position = UDim2.new(0.5, -100, 0.5, 15)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "0.0"
+speedLabel.Font = Enum.Font.GothamBold
+speedLabel.TextSize = 22
+speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+speedLabel.TextStrokeTransparency = 0
+speedLabel.Visible = settings.showSpeed
+speedLabel.Parent = screenGui
+
+local timerLabel = Instance.new("TextLabel")
+timerLabel.Size = UDim2.new(0, 200, 0, 30)
+timerLabel.Position = UDim2.new(1, -220, 0, 30)
+timerLabel.BackgroundTransparency = 1
+timerLabel.Text = "--:--"
+timerLabel.Font = Enum.Font.GothamBold
+timerLabel.TextSize = 22
+timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+timerLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+timerLabel.TextStrokeTransparency = 0
+timerLabel.TextXAlignment = Enum.TextXAlignment.Right
+timerLabel.Visible = settings.showTimer
+timerLabel.Parent = screenGui
+
+local stateLabel = Instance.new("TextLabel")
+stateLabel.Size = UDim2.new(0, 200, 0, 16)
+stateLabel.Position = UDim2.new(1, -220, 0, 62)
+stateLabel.BackgroundTransparency = 1
+stateLabel.Text = ""
+stateLabel.Font = Enum.Font.GothamBold
+stateLabel.TextSize = 11
+stateLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+stateLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+stateLabel.TextStrokeTransparency = 0
+stateLabel.TextXAlignment = Enum.TextXAlignment.Right
+stateLabel.Visible = settings.showTimer
+stateLabel.Parent = screenGui
+
 local trackedItems = {}
 
 local function ClearAllESP()
@@ -77,7 +124,7 @@ local function ClearAllESP()
     end
 end
 
-local function CreateESP(obj, name, color)
+local function CreateESP(obj, name, color, type)
     if trackedItems[obj] then return end
     if obj.Parent and trackedItems[obj.Parent] then return end
     
@@ -122,7 +169,7 @@ local function CreateESP(obj, name, color)
     nameLabel.TextXAlignment = Enum.TextXAlignment.Center
     nameLabel.Parent = billboard
 
-    trackedItems[obj] = { billboard = billboard, highlight = hl, target = targetPart }
+    trackedItems[obj] = { billboard = billboard, highlight = hl, target = targetPart, color = color, type = type }
 end
 
 local function UpdateESP()
@@ -144,26 +191,26 @@ local function UpdateESP()
                     local isSkull = n:find("skull")
                     
                     if isSoul and settings.espSouls then
-                        CreateESP(obj, "👻 Soul", Color3.fromRGB(180, 100, 255))
+                        CreateESP(obj, "👻 Soul", Color3.fromRGB(180, 100, 255), "soul")
                     elseif isSkull and settings.espSouls then
                         local siblingSoul = nil
                         if obj.Parent then
                             siblingSoul = obj.Parent:FindFirstChild("Souls0") or obj.Parent:FindFirstChild("Soul")
                         end
                         if not siblingSoul then
-                            CreateESP(obj, "💀 Skull", Color3.fromRGB(255, 255, 255))
+                            CreateESP(obj, "💀 Skull", Color3.fromRGB(255, 255, 255), "soul")
                         end
                     elseif settings.espItems then
                         if n:find("token") or n:find("ticket") then 
-                            CreateESP(obj, "🎟️ Ticket", Color3.fromRGB(100, 255, 100))
+                            CreateESP(obj, "🎟️ Ticket", Color3.fromRGB(100, 255, 100), "item")
                         elseif n:find("experience") then 
-                            CreateESP(obj, "✨ EXP", Color3.fromRGB(0, 255, 255))
+                            CreateESP(obj, "✨ EXP", Color3.fromRGB(0, 255, 255), "item")
                         elseif n:find("loadout") then 
-                            CreateESP(obj, "⚔️ Loadout", Color3.fromRGB(255, 100, 200))
+                            CreateESP(obj, "⚔️ Loadout", Color3.fromRGB(255, 100, 200), "item")
                         elseif n:find("point") then 
-                            CreateESP(obj, "🎯 Point", Color3.fromRGB(255, 255, 0))
+                            CreateESP(obj, "🎯 Point", Color3.fromRGB(255, 255, 0), "item")
                         elseif n == "usb" then
-                            CreateESP(obj, "💾 USB", Color3.fromRGB(0, 255, 255))
+                            CreateESP(obj, "💾 USB", Color3.fromRGB(0, 255, 255), "item")
                         end
                     end
                 end
@@ -176,7 +223,7 @@ local function UpdateESP()
         if plrsFolder then
             for _, obj in ipairs(plrsFolder:GetChildren()) do
                 if obj.Name:find("Glorp") then 
-                    CreateESP(obj, "👾 Glorp Cat", Color3.fromRGB(255, 50, 50)) 
+                    CreateESP(obj, "👾 Glorp Cat", Color3.fromRGB(255, 50, 50), "mob") 
                 end
             end
         end
@@ -189,17 +236,118 @@ task.spawn(function()
     end
 end)
 
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "EvadeSettings"
-screenGui.ResetOnSpawn = false
-screenGui.IgnoreGuiInset = true
-screenGui.DisplayOrder = 2147483647
-screenGui.Parent = game:GetService("CoreGui")
+local compassFrame = Instance.new("Frame")
+compassFrame.Size = UDim2.new(0, 0, 0, 0)
+compassFrame.Position = UDim2.new(0.5, 0, 0.5, 0)
+compassFrame.BackgroundTransparency = 1
+compassFrame.Parent = screenGui
+
+local indicators = {}
+
+local function GetOrCreateIndicator(id)
+    if indicators[id] then return indicators[id] end
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 80, 0, 24)
+    frame.BackgroundTransparency = 1
+    frame.AnchorPoint = Vector2.new(0.5, 0.5)
+    frame.Parent = compassFrame
+    
+    local arrow = Instance.new("TextLabel")
+    arrow.Size = UDim2.new(0, 100, 0, 20)
+    arrow.BackgroundTransparency = 1
+    arrow.Text = "▲"
+    arrow.Font = Enum.Font.GothamBold
+    arrow.TextSize = 18
+    arrow.TextStrokeTransparency = 0
+    arrow.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(0, 100, 0, 14)
+    label.Position = UDim2.new(0, 0, 0, 16)
+    label.BackgroundTransparency = 1
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 12
+    label.TextStrokeTransparency = 0
+    label.Parent = frame
+
+    indicators[id] = { frame = frame, arrow = arrow, label = label }
+    return indicators[id]
+end
+
+local function UpdateCompass()
+    if not settings.showCompass then
+        for _, ind in pairs(indicators) do ind.frame.Visible = false end
+        return
+    end
+    
+    if not Camera or not Camera.Parent then Camera = Workspace.CurrentCamera end
+    
+    local char = player.Character
+    local rootPart = char and char:FindFirstChild("HumanoidRootPart")
+    if not rootPart or not Camera then return end
+    
+    local targets = {}
+    for obj, data in pairs(trackedItems) do
+        if obj and obj.Parent and data.target and data.target.Parent then
+            local enabled = false
+            if data.type == "soul" and settings.espSouls then enabled = true end
+            if data.type == "item" and settings.espItems then enabled = true end
+            if data.type == "mob" and settings.espMobs then enabled = true end
+            
+            if enabled then
+                table.insert(targets, {
+                    pos = data.target.Position,
+                    color = data.color,
+                    dist = (rootPart.Position - data.target.Position).Magnitude
+                })
+            end
+        end
+    end
+    
+    table.sort(targets, function(a, b) return a.dist < b.dist end)
+    
+    local maxShow = 6
+    local shownCount = 0
+    
+    for id, ind in pairs(indicators) do ind.frame.Visible = false end
+
+    for i, t in ipairs(targets) do
+        if shownCount >= maxShow then break end
+        shownCount = shownCount + 1
+        
+        local indicator = GetOrCreateIndicator(i)
+        indicator.frame.Visible = true
+        
+        local direction = (t.pos - rootPart.Position).Unit
+        local camLook = Camera.CFrame.LookVector
+        local camRight = Camera.CFrame.RightVector
+        
+        local flatDir = Vector3.new(direction.X, 0, direction.Z).Unit
+        local flatLook = Vector3.new(camLook.X, 0, camLook.Z).Unit
+        local flatRight = Vector3.new(camRight.X, 0, camRight.Z).Unit
+        
+        local dotForward = flatDir:Dot(flatLook)
+        local dotRight = flatDir:Dot(flatRight)
+        
+        local angle = math.atan2(dotRight, dotForward)
+        local arrowAngle = math.deg(angle)
+        
+        local radius = 100
+        local x = math.sin(angle) * radius
+        local y = -math.cos(angle) * radius
+        
+        indicator.frame.Position = UDim2.new(0.5, x, 0.5, y)
+        indicator.arrow.Rotation = arrowAngle
+        indicator.arrow.TextColor3 = t.color
+        indicator.label.Text = string.format("%.0fm", t.dist)
+        indicator.label.TextColor3 = t.color
+    end
+end
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 280, 0, 420)
-mainFrame.Position = UDim2.new(0.5, -140, 0.5, -210)
+mainFrame.Size = UDim2.new(0, 280, 0, 450)
+mainFrame.Position = UDim2.new(0.5, -140, 0.5, -225)
 mainFrame.BackgroundColor3 = Color3.fromRGB(15, 15, 22)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
@@ -243,7 +391,7 @@ scroll.Position = UDim2.new(0, 5, 0, 40)
 scroll.BackgroundTransparency = 1
 scroll.BorderSizePixel = 0
 scroll.ScrollBarThickness = 4
-scroll.CanvasSize = UDim2.new(0, 0, 0, 500)
+scroll.CanvasSize = UDim2.new(0, 0, 0, 550)
 scroll.Parent = mainFrame
 
 local list = Instance.new("UIListLayout")
@@ -297,6 +445,20 @@ end
 
 local yOrder = 0
 
+local compassTitle = Instance.new("TextLabel")
+compassTitle.Size = UDim2.new(1, 0, 0, 20)
+compassTitle.BackgroundTransparency = 1
+compassTitle.Text = "--- ПРИЦЕЛ ---"
+compassTitle.Font = Enum.Font.GothamBold
+compassTitle.TextSize = 12
+compassTitle.TextColor3 = Color3.fromRGB(200, 200, 255)
+compassTitle.LayoutOrder = yOrder yOrder = yOrder + 1
+compassTitle.Parent = scroll
+
+MakeToggle("🎯 Метки у центра", settings.showCompass, function(s)
+    settings.showCompass = s
+end).LayoutOrder = yOrder yOrder = yOrder + 1
+
 local espTitle = Instance.new("TextLabel")
 espTitle.Size = UDim2.new(1, 0, 0, 20)
 espTitle.BackgroundTransparency = 1
@@ -334,13 +496,10 @@ hudTitle.Parent = scroll
 
 MakeToggle("📊 Скорость", settings.showSpeed, function(s)
     settings.showSpeed = s
-    speedLabel.Visible = s
 end).LayoutOrder = yOrder yOrder = yOrder + 1
 
 MakeToggle("⏱️ Таймер", settings.showTimer, function(s)
     settings.showTimer = s
-    timerLabel.Visible = s
-    stateLabel.Visible = s
 end).LayoutOrder = yOrder yOrder = yOrder + 1
 
 local skyTitle = Instance.new("TextLabel")
@@ -357,47 +516,6 @@ MakeSkyButton("Небо: Обычное", "Default").LayoutOrder = yOrder yOrder
 MakeSkyButton("Небо: Закат", "Sunset").LayoutOrder = yOrder yOrder = yOrder + 1
 MakeSkyButton("Небо: Ночь", "Night").LayoutOrder = yOrder yOrder = yOrder + 1
 MakeSkyButton("Небо: Космос", "Space").LayoutOrder = yOrder yOrder = yOrder + 1
-
-local speedLabel = Instance.new("TextLabel")
-speedLabel.Size = UDim2.new(0, 200, 0, 30)
-speedLabel.Position = UDim2.new(0.5, -100, 0.5, 15)
-speedLabel.BackgroundTransparency = 1
-speedLabel.Text = "0.0"
-speedLabel.Font = Enum.Font.GothamBold
-speedLabel.TextSize = 22
-speedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-speedLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-speedLabel.TextStrokeTransparency = 0
-speedLabel.Visible = settings.showSpeed
-speedLabel.Parent = screenGui
-
-local timerLabel = Instance.new("TextLabel")
-timerLabel.Size = UDim2.new(0, 200, 0, 30)
-timerLabel.Position = UDim2.new(1, -220, 0, 30)
-timerLabel.BackgroundTransparency = 1
-timerLabel.Text = "--:--"
-timerLabel.Font = Enum.Font.GothamBold
-timerLabel.TextSize = 22
-timerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-timerLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-timerLabel.TextStrokeTransparency = 0
-timerLabel.TextXAlignment = Enum.TextXAlignment.Right
-timerLabel.Visible = settings.showTimer
-timerLabel.Parent = screenGui
-
-local stateLabel = Instance.new("TextLabel")
-stateLabel.Size = UDim2.new(0, 200, 0, 16)
-stateLabel.Position = UDim2.new(1, -220, 0, 62)
-stateLabel.BackgroundTransparency = 1
-stateLabel.Text = ""
-stateLabel.Font = Enum.Font.GothamBold
-stateLabel.TextSize = 11
-stateLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-stateLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-stateLabel.TextStrokeTransparency = 0
-stateLabel.TextXAlignment = Enum.TextXAlignment.Right
-stateLabel.Visible = settings.showTimer
-stateLabel.Parent = screenGui
 
 local cachedIngameFrame = nil
 local cachedRoundFrame = nil
@@ -421,14 +539,22 @@ end
 
 local function GetTimerData()
     UpdateCache()
-    if not cachedIngameFrame or not cachedIngameFrame.Parent then lastCacheUpdate = 0 UpdateCache() end
-    if not cachedRoundFrame or not cachedRoundFrame.Parent then lastCacheUpdate = 0 UpdateCache() end
-    
+
+    if not cachedIngameFrame or not cachedIngameFrame.Parent then
+        lastCacheUpdate = 0
+        UpdateCache()
+    end
+    if not cachedRoundFrame or not cachedRoundFrame.Parent then
+        lastCacheUpdate = 0
+        UpdateCache()
+    end
+
     local ingameVisible = cachedIngameFrame and cachedIngameFrame.Visible
     local roundVisible = cachedRoundFrame and cachedRoundFrame.Visible
+
     local ingameText = nil
     local roundText = nil
-    
+
     if cachedIngameFrame then
         local t = cachedIngameFrame:FindFirstChild("Timer")
         if t and t:IsA("TextLabel") then ingameText = t.Text end
@@ -437,26 +563,49 @@ local function GetTimerData()
         local t = cachedRoundFrame:FindFirstChild("Timer")
         if t and t:IsA("TextLabel") then roundText = t.Text end
     end
-    
-    if ingameVisible and ingameText and ingameText ~= "" then return ingameText, "РАУНД" end
-    if roundVisible and roundText and roundText ~= "" then return roundText, "ПЕРЕРЫВ" end
-    if ingameText and ingameText ~= "" and ingameText ~= "0:00" then return ingameText, "РАУНД" end
-    if roundText and roundText ~= "" and roundText ~= "0:00" then return roundText, "ПЕРЕРЫВ" end
-    
+
+    if ingameVisible and ingameText and ingameText ~= "" then
+        return ingameText, "РАУНД"
+    end
+    if roundVisible and roundText and roundText ~= "" then
+        return roundText, "ПЕРЕРЫВ"
+    end
+
+    if ingameText and ingameText ~= "" and ingameText ~= "0:00" then
+        return ingameText, "РАУНД"
+    end
+    if roundText and roundText ~= "" and roundText ~= "0:00" then
+        return roundText, "ПЕРЕРЫВ"
+    end
+
     return nil, nil
 end
 
 local lastGuiUpdate = 0
 RunService.RenderStepped:Connect(function()
     local now = tick()
+    
+    UpdateCompass()
+
+    speedLabel.Visible = settings.showSpeed
+    timerLabel.Visible = settings.showTimer
+    stateLabel.Visible = settings.showTimer
 
     if now - lastGuiUpdate < 0.05 then return end
     lastGuiUpdate = now
 
-    if settings.showSpeed and rootPart and rootPart.Parent then
-        local vel = rootPart.AssemblyLinearVelocity
-        local flatVel = Vector3.new(vel.X, 0, vel.Z)
-        speedLabel.Text = string.format("%.1f", flatVel.Magnitude)
+    if settings.showSpeed then
+        local char = player.Character
+        local hum = char and char:FindFirstChild("Humanoid")
+        local rp = char and char:FindFirstChild("HumanoidRootPart")
+        
+        if char and hum and hum.Health > 0 and rp and rp.Parent then
+            local vel = rp.AssemblyLinearVelocity
+            local flatVel = Vector3.new(vel.X, 0, vel.Z)
+            speedLabel.Text = string.format("%.1f", flatVel.Magnitude)
+        else
+            speedLabel.Text = "0.0"
+        end
     end
 
     if settings.showTimer then
@@ -489,5 +638,5 @@ closeBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
 end)
 
-print("EVADE v64")
+print("EVADE v69")
 print("Нажми Z, чтобы открыть меню")
