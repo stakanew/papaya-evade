@@ -34,11 +34,22 @@ local skies = {
         rt="rbxassetid://8992230677", up="rbxassetid://8992230677"
     },
     Space = {
-        bk="rbxassetid://6511824150", dn="rbxassetid://6511824150",
-        ft="rbxassetid://6511824150", lf="rbxassetid://6511824150",
-        rt="rbxassetid://6511824150", up="rbxassetid://6511824150"
+        bk="rbxassetid://12064107", dn="rbxassetid://12064152",
+        ft="rbxassetid://12064121", lf="rbxassetid://12063984",
+        rt="rbxassetid://12064131", up="rbxassetid://12063990"
     }
 }
+
+-- ФИКС СВЕТА: небо теперь не влияет на яркость карты
+local function SetupLighting()
+    Lighting.EnvironmentDiffuseScale = 0
+    Lighting.EnvironmentSpecularScale = 0
+    Lighting.Ambient = Color3.fromRGB(150, 150, 150)
+    Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
+    Lighting.Brightness = 2
+    Lighting.GlobalShadows = true
+end
+SetupLighting()
 
 local currentSkyObj = nil
 local function ApplySky(skyName)
@@ -58,8 +69,6 @@ local function ApplySky(skyName)
     sky.SkyboxLf = data.lf
     sky.SkyboxRt = data.rt
     sky.SkyboxUp = data.up
-    sky.SunAngularSize = 0
-    sky.MoonAngularSize = 0
     sky.Parent = Lighting
     currentSkyObj = sky
 end
@@ -638,5 +647,5 @@ closeBtn.MouseButton1Click:Connect(function()
     mainFrame.Visible = false
 end)
 
-print("EVADE v69")
+print("EVADE v70")
 print("Нажми Z, чтобы открыть меню")
